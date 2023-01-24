@@ -1,0 +1,12 @@
+{
+    "name": "mejison/mixpanel-test",
+    "authors": [
+        {
+            "name": "mejison",
+            "email": "dev.mejison@gmail.com"
+        }
+    ],
+    "require": {
+        "mixpanel/mixpanel-php": "^2.10"
+    }
+}
