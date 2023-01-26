@@ -26,8 +26,14 @@
                     </div>
                 </div>
             </div>
-            <div class="graph">
-                <bar-chart :bar-data="ChartConfig" :chart-options="options"></bar-chart>
+            <div class="graph" >
+                <bar-chart v-if=" ! isLoaded" :bar-data="ChartConfig" :chart-options="options"></bar-chart>
+                <div class="lds-ring" v-if="isLoaded">
+                    <div></div>
+                    <div></div>
+                    <div></div>
+                    <div></div>
+                </div>
             </div>
             <div class="tables">
                 <div class="countries">
@@ -38,7 +44,7 @@
                         <div></div>
                         <div></div>
                     </div>
-                    <datatable-pager v-model="pagination.countries.page" type="abbreviated"
+                    <datatable-pager v-if=" ! isLoaded" v-model="pagination.countries.page" type="abbreviated"
                         :per-page="pagination.countries.per_page">
                     </datatable-pager>
                 </div>
@@ -50,7 +56,7 @@
                         <div></div>
                         <div></div>
                     </div>
-                    <datatable-pager v-model="pagination.sites.page" type="abbreviated"
+                    <datatable-pager v-if=" ! isLoaded" v-model="pagination.sites.page" type="abbreviated"
                         :per-page="pagination.sites.per_page">
                     </datatable-pager>
                 </div>
@@ -73,7 +79,7 @@
     }, {
         responsive: true,
         maintainAspectRatio: false
-    })
+    });
 
     var vueInstance;
     window.onload = function () {
@@ -91,33 +97,13 @@
                     },
                     ChartConfig: {
                         labels: [],
-                        datasets: [{
-                                data: [33],
-                                backgroundColor: '#e34c3d',
-                                borderColor: '#e34c3d',
-                                label: "month1"
-                            },
-                            {
-                                data: [22],
-                                backgroundColor: '#e34c3d',
-                                borderColor: '#e34c3d',
-                                label: "month2"
-                            },
-                            {
-                                data: [1],
-                                backgroundColor: '#e34c3d',
-                                borderColor: '#e34c3d',
-                                label: "month3"
-                            }
-                        ]
+                        datasets: []
                     },
                     options: {
                         responsive: true,
+                        height: '400px',
+                        width: '700px',
                         maintainAspectRatio: false,
-                        tooltips: {
-                            mode: 'index',
-                            intersect: false,
-                        },
                         hover: {
                             mode: 'nearest',
                             intersect: true
@@ -126,17 +112,9 @@
                             xAxes: [{
                                 display: true,
                                 categoryPercentage: 0.5,
-                                scaleLabel: {
-                                    display: true,
-                                    labelString: 'Month'
-                                }
                             }],
                             yAxes: [{
                                 display: true,
-                                scaleLabel: {
-                                    display: true,
-                                    labelString: 'Visits'
-                                }
                             }]
                         }
                     },
@@ -205,7 +183,6 @@
                 calcMetrics(results) {
                     const dateToday = this.formatDate(new Date(), "yyyy-mm-dd");
                     const today = results[dateToday] ? results[dateToday] : 0;
-
                     results = Object.entries(results)
                     const total = results.reduce(function (acc, count) {
                         return acc + count[1];
@@ -222,23 +199,31 @@
                         stats
                     } = data;
                     this.currentPost = post;
-                    if (stats.results) {
-                        this.calcMetrics(stats.results);
-                    }
                     this.handleToggleDialog();
                     this.loadTops(post);
                 },
                 loadTops(post) {
                     this.sites = []
                     this.countries = []
+                    this.ChartConfig = {
+                        labels: [],
+                        datasets: [],
+                    };
+                    this.metrics = {
+                        total: 0,
+                        today: 0,
+                        average_daily: 0,
+                    };
                     this.isLoaded = true;
                     fetch(`/wp-json/mixpanel/v1/visit?post_id=${post.post_id}`)
                         .then(e => e.json())
                         .then((data) => {
                             const {
                                 countries,
-                                sites
+                                sites,
+                                graph,
                             } = data;
+
                             Object.entries(sites).forEach((item, index) => {
                                 this.sites = [
                                     ...this.sites,
@@ -268,6 +253,23 @@
                             this.countries = this.countries.sort(function (a, b) {
                                 return a.visitors > b.visitors ? -1 : 1;
                             })
+
+                            const { results } = graph;
+                            const labels = Object.keys(results);
+                            const datasets = Object.values(results);
+
+                            this.calcMetrics(results);
+
+                            this.ChartConfig = {
+                                labels: [...labels],
+                                datasets: [
+                                    {
+                                        data: [...datasets],
+                                        backgroundColor: "#e34c3d",
+                                        label: "Visits"
+                                    }
+                                ]
+                            }
                             this.isLoaded = false;
                         })
                 }
@@ -294,6 +296,11 @@
         right: 35px;
         color: #222;
         text-decoration: none;
+    }
+
+    .graph {
+        min-height: 400px;
+        width: 100%;
     }
 
     .dialog-report .metrics {
