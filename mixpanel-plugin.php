@@ -113,7 +113,7 @@ function getViewsFromMixPanel($post_id) {
 
 function wpufe_dashboard_change_head( $args ) {
     printf( '<th  width="150">%s</th>', __( 'Date', 'wpuf' ) );
-    printf( '<th  width="200">%s</th>', __( 'Results', 'wpuf' ) );
+    printf( '<th  width="250">%s</th>', __( 'Results', 'wpuf' ) );
     printf( '<th>%s</th>', __( '', 'wpuf' ) );
 }
 add_action( 'wpuf_account_posts_head_col', 'wpufe_dashboard_change_head', 10, 2 );
@@ -178,7 +178,7 @@ function wpuf_account_show_report_dialog($args, $post) {
 
 add_action( 'wpuf_account_show_report', 'wpuf_account_show_report_dialog', 10, 2);
 
-function topByProp($prop_name, $post_id) {
+function topByProp($prop_name, $property_value, $property_name = 'post_id') {
     $firstDayOfYear = date('Y-m-d', strtotime('first day of january this year'));
     $today = date('Y-m-d', strtotime('today'));
 
@@ -187,7 +187,7 @@ function topByProp($prop_name, $post_id) {
         'event' => json_encode([MP_EVENT]),
         'from_date' => $firstDayOfYear,
         'to_date' => $today,
-        'where' => 'properties["post_id"] == ' . $post_id,
+        'where' => 'properties["' . $property_name . '"] == ' . ( is_numeric($property_value) ? $property_value : '"' . $property_value . '"' )
     ];
 
     $query = http_build_query($data);
@@ -249,27 +249,38 @@ function aggregateEventCounts($post_id) {
 
 function at_rest_visit_endpoint($prop_name) {
     $post_id = $_GET['post_id'] ?? false;
+    $post_title = $_GET['post_title'] ?? false;
+
     if ( ! $post_id) {
         return new WP_REST_Response(['message' => 'Post Id required!']);   
+    }
+
+    if ( ! $post_title) {
+        return new WP_REST_Response(['message' => 'Post Title required!']);   
     }
     
    // $siteNames = ['4 Release', 'Arboretum Realty', 'Arbor Realty', 'Axio Press', 'Azure Realty', 'Bayfront Homes', 'Bayfront Properties', 'Bayfront Realty', 'Bell Real Estate', 'Cascade Realty', 'Collier Real Estate', 'Convergence Press', 'Florida Newswire', 'Golf Real Estate', 'Go Realty', 'Island Real Estate', 'Luxury Real Estate', 'News Feed', 'Newswire for Homes', 'Oceanfront Real Estate', 'Oceanfront Realty', 'Press Release 360', 'Press Release Spin', 'Real Estate Buzz', 'Real Estate PR', 'Real Estate Realtor', 'Real Estate Retriever', 'Realty Group', 'Realty Hub', 'Realty Logic', 'Realty News', 'retrenz.com', 'River Homes', 'Targeted Pressrelease Distribution', 'Top Listings', 'Treviso Properties', 'Tropical Realty', 'US Realty', 'Vacation Real Estate', 'viral wire', 'Viz Release', 'Z Press Release'];
     $siteUrls = ['https://4release.com/', 'http://arboretumrealty.com', 'http://arbor-realty.com', 'http://axiopress.com', 'http://azure-realty.com', 'http://bayfront-homes.com', 'http://bayfront-properties.com/', 'http://bayfront-realty.com', 'http://bell-real-estate.com', 'https://cascade-realty.com/', 'http://collier-real-estate.com', 'http://convergencepress.com', 'https://flnewswire.com', 'http://golf-real-estate.com', 'https://gorealty.homes/', 'http://island-real-estate.com', 'https://luxuryrealestate.news', 'https://newsfeed.homes', 'https://newswire.homes', 'http://oceanfront-real-estate.com', 'http://oceanfront-realty.com', 'http://pressrelease360.com', 'http://pressreleasespin.com', 'http://real-estate.buzz', 'https://realestatepr.biz', 'http://real-estate-realtor.com', 'http://real-estate-retriever.com', 'https://realtygroup.homes', 'https://realtyhub.homes', 'http://realty-logic.com', 'https://realtynews.biz', 'https://retrenz.com', 'http://river-homes.com', 'http://targetedpressreleasedistribution.com', 'https://toplistings.homes', 'https://treviso-properties.com/', 'http://tropical-realty.com', 'https://usrealty.homes', 'http://vacation-real-estate.com', 'https://viral-wire.com', 'https://vizrelease.com/category/real-estate-press-release/', 'http://zpressrelease.com'];
-    $sitesStats = topByProp("referer", $post_id);
+    $sitesStats = topByProp("referer", $post_title, 'post_name');
     $keys = array_keys($sitesStats);    
     
-
     $sites = [];
     foreach($siteUrls as $url) {
         $parse = parse_url($url);
         $host = ! empty($parse['host']) ? $parse['host'] : false;
-        if ($host) {
-            // echo $host . " ";
-            $positionIndex = (int) preg_grep('/' . $host . '/i', $keys);
-            $sites[$url] = isset($sitesStats[$positionIndex]) ? $sitesStats[$positionIndex] : 0;
+        
+        $positionIndex = false;
+        foreach($keys as $index => $key) {
+            if (strpos($key, $host) !== false) {
+                $positionIndex = $key;
+            }
         }
-        // die;
-        $sites[$url] = 0;
+
+        if ($positionIndex) {
+            $sites[$url] = ! empty($sitesStats[$positionIndex]) ? $sitesStats[$positionIndex] : 0;
+        } else {
+            $sites[$url] = 0;
+        }
     }
 
     $data = [
