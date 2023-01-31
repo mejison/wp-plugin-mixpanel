@@ -112,8 +112,9 @@ function getViewsFromMixPanel($post_id) {
 }
 
 function wpufe_dashboard_change_head( $args ) {
-   printf( '<th  width="200">%s</th>', __( 'Results', 'wpuf' ) );
-//    printf( '<th  width="150">%s</th>', __( '', 'wpuf' ) );
+    printf( '<th  width="150">%s</th>', __( 'Date', 'wpuf' ) );
+    printf( '<th  width="200">%s</th>', __( 'Results', 'wpuf' ) );
+    printf( '<th>%s</th>', __( '', 'wpuf' ) );
 }
 add_action( 'wpuf_account_posts_head_col', 'wpufe_dashboard_change_head', 10, 2 );
 
@@ -134,16 +135,27 @@ function wpufe_dashboard_row_col( $args, $post ) {
         ?>
 <td>
     <?php
+        echo date("m/d/y", time());
+    ?>
+</td>
+<td>
+    <?php
                 echo number_format($views) . ' Views';
             ?>
     <span onClick='vueInstance.openReport(<?php echo json_encode(['post' => [
             'post_id' => $post->ID, 
             'post_author' => $post->post_author, 
-            'post_title' => $post->post_title
+            'post_title' => $post->post_title,
+            'post_date' => $post->post_date,
         ],
         'stats' => $mixPanelStats,
-        ]); ?>)' style="color: blue !important; cursor:pointer; white-space: nowrap; margin-left: 30px">See
+        ]); ?>)' style="color: blue !important; cursor:pointer; white-space: nowrap; margin-left: 30px">Traffic
         Report</span>
+</td>
+<td>
+    <a href="https://realtywire.com/results-report"
+        style="color: blue !important; cursor:pointer; white-space: nowrap; margin-left: 30px" target="blank">Clipping
+        Report</a>
 </td>
 <?php
     } else {
@@ -236,19 +248,38 @@ function aggregateEventCounts($post_id) {
 }
 
 function at_rest_visit_endpoint($prop_name) {
+    $post_id = $_GET['post_id'] ?? false;
+    if ( ! $post_id) {
+        return new WP_REST_Response(['message' => 'Post Id required!']);   
+    }
+    
+   // $siteNames = ['4 Release', 'Arboretum Realty', 'Arbor Realty', 'Axio Press', 'Azure Realty', 'Bayfront Homes', 'Bayfront Properties', 'Bayfront Realty', 'Bell Real Estate', 'Cascade Realty', 'Collier Real Estate', 'Convergence Press', 'Florida Newswire', 'Golf Real Estate', 'Go Realty', 'Island Real Estate', 'Luxury Real Estate', 'News Feed', 'Newswire for Homes', 'Oceanfront Real Estate', 'Oceanfront Realty', 'Press Release 360', 'Press Release Spin', 'Real Estate Buzz', 'Real Estate PR', 'Real Estate Realtor', 'Real Estate Retriever', 'Realty Group', 'Realty Hub', 'Realty Logic', 'Realty News', 'retrenz.com', 'River Homes', 'Targeted Pressrelease Distribution', 'Top Listings', 'Treviso Properties', 'Tropical Realty', 'US Realty', 'Vacation Real Estate', 'viral wire', 'Viz Release', 'Z Press Release'];
+    $siteUrls = ['https://4release.com/', 'http://arboretumrealty.com', 'http://arbor-realty.com', 'http://axiopress.com', 'http://azure-realty.com', 'http://bayfront-homes.com', 'http://bayfront-properties.com/', 'http://bayfront-realty.com', 'http://bell-real-estate.com', 'https://cascade-realty.com/', 'http://collier-real-estate.com', 'http://convergencepress.com', 'https://flnewswire.com', 'http://golf-real-estate.com', 'https://gorealty.homes/', 'http://island-real-estate.com', 'https://luxuryrealestate.news', 'https://newsfeed.homes', 'https://newswire.homes', 'http://oceanfront-real-estate.com', 'http://oceanfront-realty.com', 'http://pressrelease360.com', 'http://pressreleasespin.com', 'http://real-estate.buzz', 'https://realestatepr.biz', 'http://real-estate-realtor.com', 'http://real-estate-retriever.com', 'https://realtygroup.homes', 'https://realtyhub.homes', 'http://realty-logic.com', 'https://realtynews.biz', 'https://retrenz.com', 'http://river-homes.com', 'http://targetedpressreleasedistribution.com', 'https://toplistings.homes', 'https://treviso-properties.com/', 'http://tropical-realty.com', 'https://usrealty.homes', 'http://vacation-real-estate.com', 'https://viral-wire.com', 'https://vizrelease.com/category/real-estate-press-release/', 'http://zpressrelease.com'];
+    $sitesStats = topByProp("referer", $post_id);
+    $keys = array_keys($sitesStats);    
+    
+
+    $sites = [];
+    foreach($siteUrls as $url) {
+        $parse = parse_url($url);
+        $host = ! empty($parse['host']) ? $parse['host'] : false;
+        if ($host) {
+            // echo $host . " ";
+            $positionIndex = (int) preg_grep('/' . $host . '/i', $keys);
+            $sites[$url] = isset($sitesStats[$positionIndex]) ? $sitesStats[$positionIndex] : 0;
+        }
+        // die;
+        $sites[$url] = 0;
+    }
+
     $data = [
         'sites' => [],
         'countries' => []
     ];
 
-    $post_id = $_GET['post_id'] ?? false;
-
-    if ( ! $post_id) {
-        return new WP_REST_Response(['message' => 'Post Id required!']);   
-    }
 
     $data['countries'] = topByProp("country_name", $post_id);
-    $data['sites'] = topByProp("referer", $post_id);
+    $data['sites'] = $sites; //topByProp("referer", $post_id);
     $data['graph'] = aggregateEventCounts($post_id);
     
     return new WP_REST_Response($data);

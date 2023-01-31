@@ -1,32 +1,57 @@
 <link rel="stylesheet" href="/wp-content/plugins/mixpanel-plugin/bootstrap.min.css" />
 <div id="dialog-report">
     <dialog :open="isOpen" class="dialog-report">
-        <a href="#" @click="handleToggleDialog" class="close">&times;</a>
+        <div>
+            <a href="#" @click="handleToggleDialog" class="close">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="25px" height="25px"><path d="M360 224L272 224v-56c0-9.531-5.656-18.16-14.38-22C248.9 142.2 238.7 143.9 231.7 150.4l-96 88.75C130.8 243.7 128 250.1 128 256.8c.3125 7.781 2.875 13.25 7.844 17.75l96 87.25c7.031 6.406 17.19 8.031 25.88 4.188s14.28-12.44 14.28-21.94l-.002-56L360 288C373.3 288 384 277.3 384 264v-16C384 234.8 373.3 224 360 224zM256 0C114.6 0 0 114.6 0 256s114.6 256 256 256s256-114.6 256-256S397.4 0 256 0zM256 464c-114.7 0-208-93.31-208-208S141.3 48 256 48s208 93.31 208 208S370.7 464 256 464z"/></svg>
+                &nbsp;Back to Dashboard
+            </a>
+        </div>
         <div class="container">
+            <div class="info">
+                <div class="logo">
+                    <img src="https://realtywire.com/wp-content/uploads/2022/05/new-realty-wire-logo-v20.jpg" alt="logo" />
+                </div>
+                <h4 class="title">News Article Traffic Report</h4>
+                <ul>
+                    <li>
+                        <b>News article: </b> {{ currentPost?.post_title }}
+                    </li>
+                    <li>
+                        <b>Distribution date: </b> {{ currentPost?.post_date }}
+                    </li>
+                </ul>
+                <p>
+                    See the clipping report to see a list of sites that posted your news article <a href="https://realtywire.com/results-report" target="blank">CLICK HERE</a>
+                </p>
+                <b>
+                    This report shows you the number of times your news article has been viewed:
+                </b>
+            </div>
             <div class="metrics">
                 <div class="total">
-                    <h3>Total visitors</h3>
+                    <h3>Total views</h3>
                     <div class="value">
                         {{ humanFormat(metrics.total) }}
                     </div>
-                    <span>all time visitors</span>
+                    <span>all time views</span>
                 </div>
                 <div class="today">
-                    <h3>Visitors today</h3>
+                    <h3>Views today</h3>
                     <div class="value">
                         {{ humanFormat(metrics.today) }}
                     </div>
                 </div>
                 <div class="average">
                     <h3>
-                        Average daily visitors
+                        Average daily views
                     </h3>
                     <div class="value">
                         {{ humanFormat(metrics.average_daily) }}
                     </div>
                 </div>
             </div>
-            <div class="graph" >
+            <div class="graph">
                 <bar-chart v-if=" ! isLoaded" :bar-data="ChartConfig" :chart-options="options"></bar-chart>
                 <div class="lds-ring" v-if="isLoaded">
                     <div></div>
@@ -44,9 +69,9 @@
                         <div></div>
                         <div></div>
                     </div>
-                    <datatable-pager v-if=" ! isLoaded" v-model="pagination.countries.page" type="abbreviated"
+                    <!-- <datatable-pager v-if=" ! isLoaded" v-model="pagination.countries.page" type="abbreviated"
                         :per-page="pagination.countries.per_page">
-                    </datatable-pager>
+                    </datatable-pager> -->
                 </div>
                 <div class="sites">
                     <datatable :columns="columnsSites" :data="sites"></datatable>
@@ -111,10 +136,12 @@
                         scales: {
                             xAxes: [{
                                 display: true,
-                                categoryPercentage: 0.5,
+                                categoryPercentage: 1,
                             }],
                             yAxes: [{
-                                display: true,
+                                    ticks: {
+                                        display: false //this will remove only the label
+                                    }
                             }]
                         }
                     },
@@ -145,7 +172,7 @@
                             field: 'name',
                         },
                         {
-                            label: 'Visitors',
+                            label: 'Views',
                             field: 'visitors',
                         },
                     ],
@@ -154,13 +181,13 @@
                             field: 'url',
                         },
                         {
-                            label: 'Total Times',
+                            label: 'Views',
                             field: 'count',
                         },
                     ],
                     countries: [],
                     sites: [],
-                    currentPost: null,
+                    currentPost: {},
                     isLoaded: false,
                 }
             },
@@ -254,7 +281,9 @@
                                 return a.visitors > b.visitors ? -1 : 1;
                             })
 
-                            const { results } = graph;
+                            const {
+                                results
+                            } = graph;
                             const labels = Object.keys(results);
                             const datasets = Object.values(results);
 
@@ -262,13 +291,11 @@
 
                             this.ChartConfig = {
                                 labels: [...labels],
-                                datasets: [
-                                    {
-                                        data: [...datasets],
-                                        backgroundColor: "#e34c3d",
-                                        label: "Visits"
-                                    }
-                                ]
+                                datasets: [{
+                                    data: [...datasets],
+                                    backgroundColor: "#e34c3d",
+                                    label: "Views"
+                                }]
                             }
                             this.isLoaded = false;
                         })
@@ -283,19 +310,33 @@
         width: 100%;
         height: 100vh;
         position: fixed;
+        z-index: 999;
         top: 0;
         left: 0;
         overflow: auto;
     }
 
     .dialog-report .close {
-        font-size: 45px;
-        position: absolute;
-        z-index: 9999;
-        top: 25px;
-        right: 35px;
+        font-size: 20px;
         color: #222;
         text-decoration: none;
+        display: flex;
+        align-items: center;
+        margin: 20px 0;
+    }
+
+    .info .logo {
+        width: 250px;
+    }
+
+    .info .logo img {
+        object-fit: contain;
+        width: 100%;
+    }
+
+    .info .title {
+        font-size: 20px;
+        margin: 0 0 20px 0;
     }
 
     .graph {
@@ -364,11 +405,12 @@
     }
 
     @keyframes lds-ring {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
-}
+        0% {
+            transform: rotate(0deg);
+        }
+
+        100% {
+            transform: rotate(360deg);
+        }
+    }
 </style>
