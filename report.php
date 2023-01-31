@@ -242,7 +242,7 @@
                         average_daily: 0,
                     };
                     this.isLoaded = true;
-                    fetch(`/wp-json/mixpanel/v1/visit?post_id=${post.post_id}&post_title=${post.post_title}`)
+                    fetch(`/wp-json/mixpanel/v1/visit?post_id=${post.post_id}&post_title=${post.post_name}`)
                         .then(e => e.json())
                         .then((data) => {
                             const {
